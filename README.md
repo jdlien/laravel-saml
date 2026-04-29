@@ -4,9 +4,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/jdlien/laravel-saml.svg)](https://packagist.org/packages/jdlien/laravel-saml)
 [![License](https://img.shields.io/packagist/l/jdlien/laravel-saml.svg)](https://packagist.org/packages/jdlien/laravel-saml)
 
-A SAML 2.0 toolkit for Laravel, built as a thin binding around [SAML-Toolkits/php-saml](https://github.com/SAML-Toolkits/php-saml) (published on packagist as `onelogin/php-saml`).
-
-> Originally based on [`overtrue/laravel-saml`](https://github.com/overtrue/laravel-saml) by [@overtrue](https://github.com/overtrue). Now maintained as an independent package by [@jdlien](https://github.com/jdlien) — modernized for Laravel 12/13 and PHP 8.3+, with bug fixes, security hardening, and full Pest 4 test coverage.
+A SAML 2.0 toolkit for Laravel, built around [SAML-Toolkits/php-saml](https://github.com/SAML-Toolkits/php-saml) (on packagist as `onelogin/php-saml`).
 
 ## Requirements
 
@@ -51,9 +49,11 @@ Saml::configureIdpUsing(function (string $idpName): array {
 });
 ```
 
-Calling `Saml::idp($name)->redirect()` will resolve through the closure and cache the resulting `SamlAuth` instance. Calling `Saml::configureIdpUsing()` again automatically flushes the cache so the new closure takes effect immediately.
+Calling `Saml::idp($name)->redirect()` resolves through the closure and caches the resulting `SamlAuth` instance.
 
 ## Usage
+
+For multi-IdP scenarios, swap any `Saml::method()` call below for `Saml::idp($name)->method()` to target a specific IdP.
 
 ### Controller scaffold
 
@@ -103,16 +103,12 @@ Route::get('saml/metadata', [SamlController::class, 'metadata'])->name('saml.met
 
 ### Redirect to the IdP login
 
-Initiates SSO. Returns a Laravel `RedirectResponse`.
+Initiates SSO.
 
 ```php
 public function login(Request $request)
 {
-    // Default IdP from config
     return Saml::redirect();
-
-    // Or pick a named IdP at runtime
-    return Saml::idp($request->get('idp'))->redirect();
 }
 ```
 
@@ -124,13 +120,11 @@ Handles the IdP's authentication response. Returns a `SamlUser` (which wraps the
 public function acs(Request $request)
 {
     $samlUser = Saml::getAuthenticatedUser();
-    // Or: $samlUser = Saml::idp($request->get('idp'))->getAuthenticatedUser();
 
     $user = User::firstOrCreate(['email' => $samlUser->getUserId()]);
     Auth::login($user);
 
-    // getIntendedUrl() validates the SAML RelayState and only returns
-    // safe targets. See "Security" below.
+    // getIntendedUrl() validates the SAML RelayState — see "Security" below.
     return redirect($samlUser->getIntendedUrl() ?? '/home');
 }
 ```
@@ -141,7 +135,6 @@ public function acs(Request $request)
 public function logout(Request $request)
 {
     return Saml::redirectToLogout();
-    // Or: return Saml::idp($request->get('idp'))->redirectToLogout();
 }
 ```
 
@@ -155,7 +148,6 @@ Handles both Logout Responses (SP-initiated logout) and Logout Requests (IdP-ini
 public function sls(Request $request)
 {
     $redirect = Saml::handleLogoutRequest();
-    // Or: $redirect = Saml::idp($request->get('idp'))->handleLogoutRequest();
 
     Auth::logout();
 
@@ -194,11 +186,11 @@ If you have a legitimate reason to inspect the unvalidated value (e.g. logging, 
 
 ### Underlying SAML implementation
 
-The actual SAML 2.0 protocol logic — signature validation, XML canonicalization, encrypted assertion handling, etc. — lives in [`onelogin/php-saml`](https://github.com/SAML-Toolkits/php-saml). This package's job is the Laravel binding; it intentionally doesn't reimplement protocol primitives. We require `^4.3.1` to ensure consumers pick up the [CVE-2025-66475](https://github.com/SAML-Toolkits/php-saml/security/advisories) fix.
+The actual SAML 2.0 protocol logic — signature validation, XML canonicalization, encrypted assertion handling, etc. — lives in [`onelogin/php-saml`](https://github.com/SAML-Toolkits/php-saml). This package's job is the Laravel binding; it intentionally doesn't reimplement protocol primitives.
 
 ## Migrating from `overtrue/laravel-saml`
 
-This package is a maintained successor to `overtrue/laravel-saml`. Migration is intentionally cheap:
+This package is a successor to `overtrue/laravel-saml`. Migration is intentionally cheap:
 
 1. **Update `composer.json`:**
 
@@ -220,26 +212,21 @@ This package is a maintained successor to `overtrue/laravel-saml`. Migration is 
 
 4. **Facade calls (`Saml::redirect()`, etc.) need no changes.** The facade name is preserved.
 
-If you depended on any of these previously-buggy behaviors, note the v1.0 fixes:
-
-- `Saml::idp($name, $settings)` now respects the explicit `$settings` argument and skips the resolver. (Was: an operator-precedence bug invoked the resolver anyway.)
-- `SamlAuth::handleLogoutRequest()` now returns `?RedirectResponse`. IdP-initiated logout requires the SP to redirect back to the IdP with a LogoutResponse — the previous version captured but discarded that URL.
-- `SamlUser::parseAttributes($attributes)` now uses the values supplied in `$attributes` instead of re-fetching each via `getAttribute()`.
-- `SamlUser::getIntendedUrl()` now validates RelayState origin and rejects open-redirect surfaces.
+See [CHANGELOG.md](CHANGELOG.md) for behavior changes that may affect existing consumers.
 
 ## Testing
 
 ```bash
 composer install
-composer test            # Pest test suite
-composer test:coverage   # Coverage with the 95% minimum enforced
-composer analyse         # Larastan static analysis
-composer check-style     # Pint dry run
-composer fix-style       # Pint auto-fix
+composer test
+composer test:coverage
+composer analyse
+composer check-style
+composer fix-style
 ```
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
 
-Original copyright © 2020 overtrue. Modifications and ongoing maintenance © 2026 JD Lien.
+> Originally based on [`overtrue/laravel-saml`](https://github.com/overtrue/laravel-saml) by [@overtrue](https://github.com/overtrue). Now maintained as an independent package by [@jdlien](https://github.com/jdlien) — modernized for Laravel 12/13 and PHP 8.3+, with bug fixes, security hardening, and full Pest 4 test coverage.
