@@ -20,7 +20,7 @@ Forked from [`overtrue/laravel-saml`](https://github.com/overtrue/laravel-saml) 
 - Compat shim at `src/compat.php` (auto-loaded via composer `files`) registers `class_alias` for every `Overtrue\LaravelSaml\…` symbol so existing imports keep working during migration. Planned for removal in v3.0.
 - Pest 4 test suite covering every public method on every `src/` class. 67 tests, 100% line coverage, `--min=95` enforced in CI.
 - Larastan/PHPStan at level 6, clean.
-- CI matrix: PHP 8.3/8.4 × Laravel 12/13, plus separate static-analysis, Pint style, and Pest mutation (informational) jobs.
+- CI matrix: PHP 8.3/8.4 × Laravel 12/13, plus separate static-analysis and Pint style jobs.
 
 ### Changed
 

@@ -73,24 +73,3 @@ jobs:
 
       - name: Run Pint
         run: vendor/bin/pint --test
-
-  mutation:
-    name: Mutation Tests (informational)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: openssl, dom, libxml, mbstring
-          coverage: xdebug
-
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
-
-      - name: Run Pest mutation tests
-        run: vendor/bin/pest --mutate
