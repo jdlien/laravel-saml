@@ -1,11 +1,16 @@
 {
-  "name": "overtrue/laravel-saml",
+  "name": "jdlien/laravel-saml",
   "description": "SAML toolkit for Laravel based on OneLogin's SAML PHP Toolkit.",
   "license": "MIT",
   "authors": [
     {
+      "name": "JD Lien",
+      "email": "jd@jdlien.com"
+    },
+    {
       "name": "overtrue",
-      "email": "anzhengchao@gmail.com"
+      "email": "anzhengchao@gmail.com",
+      "role": "Original author"
     }
   ],
   "require": {
@@ -15,8 +20,11 @@
   },
   "autoload": {
     "psr-4": {
-      "Overtrue\\LaravelSaml\\": "src"
-    }
+      "Jdlien\\LaravelSaml\\": "src"
+    },
+    "files": [
+      "src/compat.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
@@ -33,7 +41,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "\\Overtrue\\LaravelSaml\\SamlServiceProvider"
+        "\\Jdlien\\LaravelSaml\\SamlServiceProvider"
       ]
     },
     "hooks": {

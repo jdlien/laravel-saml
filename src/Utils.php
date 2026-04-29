@@ -1,14 +1,14 @@
 <?php
 
-namespace Overtrue\LaravelSaml;
+namespace Jdlien\LaravelSaml;
 
 use Illuminate\Support\Str;
-use Overtrue\LaravelSaml\Exceptions\InvalidConfigException;
+use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 
 class Utils
 {
     /**
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      */
     public static function loadKeyFromFile(string $path)
     {
@@ -28,7 +28,7 @@ class Utils
     }
 
     /**
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      */
     public static function loadCertFromFile(string $path)
     {

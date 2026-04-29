@@ -1,6 +1,6 @@
 <?php
 
-namespace Overtrue\LaravelSaml;
+namespace Jdlien\LaravelSaml;
 
 use Illuminate\Support\ServiceProvider;
 

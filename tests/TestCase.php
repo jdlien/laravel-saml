@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use Overtrue\LaravelSaml\SamlServiceProvider;
+use Jdlien\LaravelSaml\SamlServiceProvider;
 
 abstract class TestCase extends \Orchestra\Testbench\TestCase
 {

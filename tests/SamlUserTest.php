@@ -3,7 +3,7 @@
 namespace Tests;
 
 use OneLogin\Saml2\Auth;
-use Overtrue\LaravelSaml\SamlUser;
+use Jdlien\LaravelSaml\SamlUser;
 
 class SamlUserTest extends TestCase
 {

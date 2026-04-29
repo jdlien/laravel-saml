@@ -1,6 +1,6 @@
 <?php
 
-namespace Overtrue\LaravelSaml\Exceptions;
+namespace Jdlien\LaravelSaml\Exceptions;
 
 use JetBrains\PhpStorm\Pure;
 

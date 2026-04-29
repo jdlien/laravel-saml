@@ -1,20 +1,20 @@
 <?php
 
-namespace Overtrue\LaravelSaml;
+namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Settings;
-use Overtrue\LaravelSaml\Exceptions\InvalidConfigException;
+use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * @method static void validateAuthentication()
  * @method static \Illuminate\Http\RedirectResponse redirect()
  * @method static \Illuminate\Http\RedirectResponse redirectToLogout()
- * @method static \Overtrue\LaravelSaml\SamlUser getAuthenticatedUser()
+ * @method static \Jdlien\LaravelSaml\SamlUser getAuthenticatedUser()
  * @method static \Illuminate\Http\RedirectResponse handleLogoutRequest()
  * @method static \Illuminate\Http\Response getMetadataXML()
  * @method static \Symfony\Component\HttpFoundation\StreamedResponse getMetadataXMLAsStreamResponse()
@@ -29,7 +29,7 @@ class Saml
 
     /**
      * @throws \OneLogin\Saml2\Error
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      */
     public static function idp(?string $idpName = self::DEFAULT_IDP_NAME, ?array $settings = null): SamlAuth
     {
@@ -54,7 +54,7 @@ class Saml
     }
 
     /**
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      * @throws \OneLogin\Saml2\Error
      */
     public static function __callStatic(string $name, array $arguments)
@@ -63,7 +63,7 @@ class Saml
     }
 
     /**
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      */
     public static function getMetadataXML(): Response
     {
@@ -95,7 +95,7 @@ class Saml
     }
 
     /**
-     * @throws \Overtrue\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
      */
     public static function normalizeConfig(array $config): array
     {

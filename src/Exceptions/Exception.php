@@ -1,5 +1,5 @@
 <?php
 
-namespace Overtrue\LaravelSaml\Exceptions;
+namespace Jdlien\LaravelSaml\Exceptions;
 
 class Exception extends \Exception {}
