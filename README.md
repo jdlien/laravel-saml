@@ -1,5 +1,6 @@
 # Laravel SAML
 
+[![CI](https://github.com/jdlien/laravel-saml/actions/workflows/ci.yml/badge.svg)](https://github.com/jdlien/laravel-saml/actions/workflows/ci.yml)
 [![Packagist Version](https://img.shields.io/packagist/v/jdlien/laravel-saml.svg?v=2)](https://packagist.org/packages/jdlien/laravel-saml)
 [![Total Downloads](https://img.shields.io/packagist/dt/jdlien/laravel-saml.svg?v=2)](https://packagist.org/packages/jdlien/laravel-saml)
 [![License](https://img.shields.io/packagist/l/jdlien/laravel-saml.svg?v=2)](https://packagist.org/packages/jdlien/laravel-saml)
