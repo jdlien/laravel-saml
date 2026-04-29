@@ -2,34 +2,95 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
-  phpcs:
+  tests:
+    name: Tests — PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup PHP environment
-        uses: shivammathur/setup-php@v2
-      - name: Install dependencies
-        run: composer install
-      - name: PHPCSFixer check
-        run: composer check-style
-  phpunit:
+
     strategy:
+      fail-fast: false
       matrix:
-        php_version: [8.1, 8.2, 8.4]
-    runs-on: ubuntu-latest
+        php: ['8.3', '8.4']
+        laravel: ['12.*', '13.*']
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup PHP environment
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php_version }}
+          php-version: ${{ matrix.php }}
+          extensions: openssl, dom, libxml, mbstring
           coverage: xdebug
-      - name: Install dependencies
-        run: composer install
-      - name: PHPUnit check
-        run: ./vendor/bin/phpunit --coverage-text
+
+      - name: Install Composer dependencies
+        run: |
+          composer require "laravel/framework:${{ matrix.laravel }}" --no-update --no-interaction
+          composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Pest with coverage
+        run: vendor/bin/pest --coverage --min=95
+
+  static-analysis:
+    name: Static Analysis (Larastan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: openssl, dom, libxml, mbstring
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Larastan
+        run: vendor/bin/phpstan analyse --no-progress
+
+  style:
+    name: Code Style (Pint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Pint
+        run: vendor/bin/pint --test
+
+  mutation:
+    name: Mutation Tests (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: openssl, dom, libxml, mbstring
+          coverage: xdebug
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Pest mutation tests
+        run: vendor/bin/pest --mutate --min-msi=70
