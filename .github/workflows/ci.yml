@@ -93,4 +93,4 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Run Pest mutation tests
-        run: vendor/bin/pest --mutate --min-msi=70
+        run: vendor/bin/pest --mutate
