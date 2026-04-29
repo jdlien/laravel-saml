@@ -16,7 +16,7 @@ class Utils
     {
         self::assertReadable($path, 'private key');
 
-        $privateKey = openssl_get_privatekey(Str::start($path, 'file://'));
+        $privateKey = @openssl_get_privatekey(Str::start($path, 'file://'));
 
         if (empty($privateKey)) {
             throw new InvalidConfigException("Could not parse private key from '{$path}'.");
@@ -36,10 +36,15 @@ class Utils
 
         $contents = file_get_contents($path);
         if ($contents === false) {
+            // @codeCoverageIgnoreStart
+            // Defense in depth: assertReadable() above already verified the
+            // path is readable, so this branch only fires on a genuinely
+            // hostile filesystem (e.g. file removed mid-read).
             throw new InvalidConfigException("Could not read X509 certificate from '{$path}'.");
+            // @codeCoverageIgnoreEnd
         }
 
-        $certificate = openssl_x509_read($contents);
+        $certificate = @openssl_x509_read($contents);
 
         if ($certificate === false) {
             throw new InvalidConfigException("Could not parse X509 certificate from '{$path}'.");

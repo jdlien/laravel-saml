@@ -57,20 +57,34 @@ class SamlUser extends Fluent
             return null;
         }
 
-        // Relative paths are safe — they can only resolve within the app.
-        if (! preg_match('#^[a-z][a-z0-9+.-]*://#i', $relayState)) {
-            return $relayState;
-        }
-
-        // Absolute URLs: only allow same-host.
-        $host = parse_url($relayState, PHP_URL_HOST);
-        if (! is_string($host) || $host === '') {
+        // Reject protocol-relative URLs (//example.com/path) — browsers treat
+        // these as absolute, which would otherwise sneak past a scheme check.
+        if (str_starts_with($relayState, '//')) {
             return null;
         }
 
-        return strcasecmp($host, $this->request->getHost()) === 0
-            ? $relayState
-            : null;
+        // If the value has a scheme (anything matching `<word>:`), only http(s)
+        // with same-host is acceptable. Other schemes (javascript:, data:,
+        // file:, ftp:, etc.) are rejected outright.
+        if (preg_match('#^([a-z][a-z0-9+.-]*):#i', $relayState, $match)) {
+            $scheme = strtolower($match[1]);
+            if ($scheme !== 'http' && $scheme !== 'https') {
+                return null;
+            }
+
+            $host = parse_url($relayState, PHP_URL_HOST);
+            if (! is_string($host) || $host === '') {
+                return null;
+            }
+
+            return strcasecmp($host, $this->request->getHost()) === 0
+                ? $relayState
+                : null;
+        }
+
+        // No scheme, not protocol-relative — treat as a relative path. Safe
+        // because it can only resolve within the application.
+        return $relayState;
     }
 
     /**

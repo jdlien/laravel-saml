@@ -144,7 +144,10 @@ class SamlAuth
      */
     public function __call(string $name, array $arguments): mixed
     {
-        if (\is_callable([$this->auth, $name])) {
+        // method_exists() only counts real methods on the class — not magic
+        // __call delegates. is_callable() returns true for any name when the
+        // target defines __call(), which would silently swallow typos.
+        if (method_exists($this->auth, $name)) {
             return \call_user_func_array([$this->auth, $name], $arguments);
         }
 

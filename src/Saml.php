@@ -95,7 +95,13 @@ class Saml
     public static function getMetadataXML(): Response
     {
         try {
-            $settings = new Settings(\config('saml'), true);
+            // Normalize first: turn file-path cert/key entries into the inlined
+            // base64 strings OneLogin expects. Without this, Settings embeds
+            // the literal paths into the metadata XML, which then fails XSD
+            // validation downstream.
+            $normalized = self::normalizeConfig((array) \config('saml', []));
+
+            $settings = new Settings($normalized, true);
             $metadata = $settings->getSPMetadata();
             $errors = $settings->validateMetadata($metadata);
 
@@ -103,10 +109,16 @@ class Saml
                 return new Response($metadata, 200, ['Content-Type' => 'text/xml']);
             }
 
+            // @codeCoverageIgnoreStart
+            // Defense in depth: with valid Settings construction, OneLogin's
+            // generated metadata is always XSD-valid, so this branch is only
+            // reachable if the SAML2 metadata XSD itself fails to load (env-
+            // specific libxml issue).
             throw new InvalidConfigException(
                 sprintf('Invalid SP metadata: %s', implode(', ', $errors)),
                 Error::METADATA_SP_INVALID,
             );
+            // @codeCoverageIgnoreEnd
         } catch (\Throwable $e) {
             throw new InvalidConfigException($e->getMessage(), (int) $e->getCode(), $e);
         }
