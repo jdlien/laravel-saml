@@ -2,8 +2,8 @@
 
 namespace Tests;
 
-use OneLogin\Saml2\Auth;
 use Jdlien\LaravelSaml\SamlUser;
+use OneLogin\Saml2\Auth;
 
 class SamlUserTest extends TestCase
 {

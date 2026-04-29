@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Support\Str;
@@ -8,13 +10,11 @@ use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 class Utils
 {
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws InvalidConfigException
      */
-    public static function loadKeyFromFile(string $path)
+    public static function loadKeyFromFile(string $path): string
     {
-        if (! \file_exists($path)) {
-            throw new InvalidConfigException("Private key file '{$path}' not exists.");
-        }
+        self::assertReadable($path, 'private key');
 
         $privateKey = openssl_get_privatekey(Str::start($path, 'file://'));
 
@@ -24,37 +24,52 @@ class Utils
 
         openssl_pkey_export($privateKey, $contents);
 
-        return static::extractOpensslString($contents, 'PRIVATE KEY');
+        return self::extractOpensslString((string) $contents, 'PRIVATE KEY');
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws InvalidConfigException
      */
-    public static function loadCertFromFile(string $path)
+    public static function loadCertFromFile(string $path): string
     {
-        if (! \file_exists($path)) {
-            throw new InvalidConfigException("X509 certificate file '{$path}' not exists.");
+        self::assertReadable($path, 'X509 certificate');
+
+        $contents = file_get_contents($path);
+        if ($contents === false) {
+            throw new InvalidConfigException("Could not read X509 certificate from '{$path}'.");
         }
 
-        $certificate = openssl_x509_read(file_get_contents($path));
+        $certificate = openssl_x509_read($contents);
 
-        if (empty($certificate)) {
+        if ($certificate === false) {
             throw new InvalidConfigException("Could not parse X509 certificate from '{$path}'.");
         }
 
-        openssl_x509_export($certificate, $contents);
+        openssl_x509_export($certificate, $exported);
 
-        return static::extractOpensslString($contents, 'CERTIFICATE');
+        return self::extractOpensslString((string) $exported, 'CERTIFICATE');
     }
 
-    public static function extractOpensslString($contents, $delimiter)
+    public static function extractOpensslString(string $contents, string $delimiter): string
     {
         $contents = str_replace(["\r", "\n"], '', $contents);
 
-        $regex = '/-{5}BEGIN(?:\s|\w)+'.$delimiter.'-{5}\s*(.+?)\s*-{5}END(?:\s|\w)+'.$delimiter.'-{5}/m';
+        $regex = '/-{5}BEGIN(?:\s|\w)+'.preg_quote($delimiter, '/').'-{5}\s*(.+?)\s*-{5}END(?:\s|\w)+'.preg_quote($delimiter, '/').'-{5}/m';
 
         preg_match($regex, $contents, $matches);
 
         return empty($matches[1]) ? '' : $matches[1];
+    }
+
+    /**
+     * @throws InvalidConfigException
+     */
+    private static function assertReadable(string $path, string $description): void
+    {
+        if (! is_readable($path)) {
+            throw new InvalidConfigException(
+                sprintf("The %s file '%s' does not exist or is not readable.", $description, $path)
+            );
+        }
     }
 }

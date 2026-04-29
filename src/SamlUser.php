@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\Request;
@@ -7,11 +9,13 @@ use Illuminate\Support\Fluent;
 use OneLogin\Saml2\Auth;
 
 /**
+ * @extends Fluent<string, mixed>
+ *
  * @method string getNameIdFormat()
  * @method string getNameIdNameQualifier()
  * @method string getNameIdSPNameQualifier()
- * @method array|null getAttributeWithFriendlyName($friendlyName)
- * @method array|null getAttributesWithFriendlyName()
+ * @method array<string, mixed>|null getAttributeWithFriendlyName(string $friendlyName)
+ * @method array<string, mixed>|null getAttributesWithFriendlyName()
  */
 class SamlUser extends Fluent
 {
@@ -81,12 +85,18 @@ class SamlUser extends Fluent
         return is_string($value) ? $value : null;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getSamlAttribute(string $attribute): ?array
     {
         return $this->auth->getAttribute($attribute);
     }
 
-    public function parseAttributes($attributes = []): static
+    /**
+     * @param  iterable<string, mixed>  $attributes
+     */
+    public function parseAttributes(iterable $attributes = []): static
     {
         foreach ($attributes as $propertyName => $samlAttribute) {
             $this->$propertyName = $samlAttribute;
@@ -105,7 +115,10 @@ class SamlUser extends Fluent
         return $this->auth;
     }
 
-    public function __call($method, $parameters)
+    /**
+     * @param  array<int, mixed>  $parameters
+     */
+    public function __call($method, $parameters): mixed
     {
         return \call_user_func_array([$this->auth, $method], $parameters);
     }

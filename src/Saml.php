@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Settings;
-use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -23,16 +25,23 @@ class Saml
 {
     public const DEFAULT_IDP_NAME = 'default';
 
+    /**
+     * @var array<string, SamlAuth>
+     */
     protected static array $resolved = [];
 
     protected static ?\Closure $idpConfigResolver = null;
 
     /**
-     * @throws \OneLogin\Saml2\Error
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
+     * @param  array<string, mixed>|null  $settings
+     *
+     * @throws Error
+     * @throws InvalidConfigException
      */
     public static function idp(?string $idpName = self::DEFAULT_IDP_NAME, ?array $settings = null): SamlAuth
     {
+        $idpName ??= self::DEFAULT_IDP_NAME;
+
         if (! isset(self::$resolved[$idpName])) {
             $idpConfig = $settings ?? (self::$idpConfigResolver ? \call_user_func(self::$idpConfigResolver, $idpName) : null);
 
@@ -40,30 +49,48 @@ class Saml
                 throw new InvalidConfigException('Cannot resolve idp config from resolver.');
             }
 
-            $settings = self::normalizeConfig(array_merge(config('saml', []), ['idp' => $idpConfig]));
+            $resolved = self::normalizeConfig(array_merge(\config('saml', []), ['idp' => $idpConfig]));
 
-            self::$resolved[$idpName] = new SamlAuth(new Auth($settings));
+            self::$resolved[$idpName] = new SamlAuth(new Auth($resolved));
         }
 
         return self::$resolved[$idpName];
     }
 
-    public static function configureIdpUsing(\Closure $closure)
+    public static function configureIdpUsing(\Closure $closure): void
     {
         self::$idpConfigResolver = $closure;
+
+        // Drop cached SamlAuth instances so subsequent idp() calls re-resolve
+        // through the new closure. Important for tests, multi-tenant flows,
+        // and long-running workers (Octane, queue, etc.).
+        self::$resolved = [];
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
-     * @throws \OneLogin\Saml2\Error
+     * Clear all cached SamlAuth instances.
+     *
+     * Call this when IdP configuration changes mid-process or between
+     * Octane/queue requests to avoid stale bindings leaking across boundaries.
      */
-    public static function __callStatic(string $name, array $arguments)
+    public static function flushResolvedIdps(): void
+    {
+        self::$resolved = [];
+    }
+
+    /**
+     * @param  array<int, mixed>  $arguments
+     *
+     * @throws InvalidConfigException
+     * @throws Error
+     */
+    public static function __callStatic(string $name, array $arguments): mixed
     {
         return \call_user_func_array([self::idp(self::DEFAULT_IDP_NAME), $name], $arguments);
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
+     * @throws InvalidConfigException
      */
     public static function getMetadataXML(): Response
     {
@@ -81,21 +108,24 @@ class Saml
                 Error::METADATA_SP_INVALID,
             );
         } catch (\Throwable $e) {
-            throw new InvalidConfigException($e->getMessage(), $e->getCode(), $e);
+            throw new InvalidConfigException($e->getMessage(), (int) $e->getCode(), $e);
         }
     }
 
     public static function getMetadataXMLAsStreamResponse(?string $filename = null): StreamedResponse
     {
-        $filename ??= Str::slug(\config('app.name')).'-metadata.xml';
+        $filename ??= Str::slug((string) \config('app.name')).'-metadata.xml';
 
-        return \response()->streamDownload(function () {
+        return \response()->streamDownload(function (): void {
             echo static::getMetadataXML()->getContent();
         }, $filename);
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\InvalidConfigException
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     *
+     * @throws InvalidConfigException
      */
     public static function normalizeConfig(array $config): array
     {
@@ -111,18 +141,32 @@ class Saml
             throw new InvalidConfigException('Please configure the "saml.sp.singleLogoutService.url".');
         }
 
-        if (\file_exists($config['sp']['privateKey'])) {
+        if (self::looksLikePath($config['sp']['privateKey'] ?? null) && file_exists($config['sp']['privateKey'])) {
             $config['sp']['privateKey'] = Utils::loadKeyFromFile($config['sp']['privateKey']);
         }
 
-        if (\file_exists($config['sp']['x509cert'])) {
+        if (self::looksLikePath($config['sp']['x509cert'] ?? null) && file_exists($config['sp']['x509cert'])) {
             $config['sp']['x509cert'] = Utils::loadCertFromFile($config['sp']['x509cert']);
         }
 
-        if (\file_exists($config['idp']['x509cert'])) {
+        if (self::looksLikePath($config['idp']['x509cert'] ?? null) && file_exists($config['idp']['x509cert'])) {
             $config['idp']['x509cert'] = Utils::loadCertFromFile($config['idp']['x509cert']);
         }
 
         return $config;
+    }
+
+    /**
+     * Distinguish a filesystem path from an inlined PEM string.
+     *
+     * Guards file_exists() against PHP 8.3+ ValueError on long inputs and
+     * against the obvious case of an inlined PEM (which contains newlines).
+     */
+    private static function looksLikePath(mixed $value): bool
+    {
+        return is_string($value)
+            && $value !== ''
+            && strlen($value) <= 4096
+            && ! str_contains($value, "\n");
     }
 }

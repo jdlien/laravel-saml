@@ -1,14 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use OneLogin\Saml2\Auth;
 use Jdlien\LaravelSaml\Exceptions\AssertException;
 use Jdlien\LaravelSaml\Exceptions\MethodNotFoundException;
 use Jdlien\LaravelSaml\Exceptions\UnauthenticatedException;
+use OneLogin\Saml2\Auth;
+use OneLogin\Saml2\Error;
 
 class SamlAuth
 {
@@ -20,7 +22,9 @@ class SamlAuth
     }
 
     /**
-     * @throws \OneLogin\Saml2\Error
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws Error
      */
     public function redirect(
         ?string $returnTo = null,
@@ -46,7 +50,9 @@ class SamlAuth
     }
 
     /**
-     * @throws \OneLogin\Saml2\Error
+     * @param  array<string, mixed>  $parameters
+     *
+     * @throws Error
      */
     public function redirectToLogout(
         ?string $returnTo = null,
@@ -76,8 +82,8 @@ class SamlAuth
     /**
      * Assertion Consumer Service. Processes the SAML Responses.
      *
-     * @throws \Jdlien\LaravelSaml\Exceptions\AssertException
-     * @throws \Jdlien\LaravelSaml\Exceptions\UnauthenticatedException
+     * @throws AssertException
+     * @throws UnauthenticatedException
      */
     public function getAuthenticatedUser(): SamlUser
     {
@@ -93,7 +99,7 @@ class SamlAuth
      * must redirect back to the IdP with a LogoutResponse). Returns null when
      * the SP initiated logout and processing is complete.
      *
-     * @throws \Jdlien\LaravelSaml\Exceptions\AssertException
+     * @throws AssertException
      */
     public function handleLogoutRequest(?callable $callback = null, bool $retrieveParametersFromServer = false): ?RedirectResponse
     {
@@ -119,7 +125,7 @@ class SamlAuth
 
         \session()->forget('saml.logoutRequestId');
 
-        if (is_string($redirectUrl) && $redirectUrl !== '') {
+        if ($redirectUrl !== '') {
             return new RedirectResponse($redirectUrl);
         }
 
@@ -132,12 +138,12 @@ class SamlAuth
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\MethodNotFoundException
+     * @param  array<int, mixed>  $arguments
+     *
+     * @throws MethodNotFoundException
      */
-    public function __call(
-        string $name,
-        array $arguments
-    ) {
+    public function __call(string $name, array $arguments): mixed
+    {
         if (\is_callable([$this->auth, $name])) {
             return \call_user_func_array([$this->auth, $name], $arguments);
         }
@@ -146,8 +152,8 @@ class SamlAuth
     }
 
     /**
-     * @throws \Jdlien\LaravelSaml\Exceptions\AssertException
-     * @throws \Jdlien\LaravelSaml\Exceptions\UnauthenticatedException
+     * @throws AssertException
+     * @throws UnauthenticatedException
      */
     public function validateAuthentication(): void
     {
