@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Jdlien\LaravelSaml\Exceptions\AssertException;
 use Jdlien\LaravelSaml\Exceptions\MethodNotFoundException;
 use Jdlien\LaravelSaml\Exceptions\UnauthenticatedException;
@@ -14,12 +13,7 @@ use OneLogin\Saml2\Error;
 
 class SamlAuth
 {
-    protected Request $request;
-
-    public function __construct(protected Auth $auth, ?Request $request = null)
-    {
-        $this->request = $request ?? \request();
-    }
+    public function __construct(protected Auth $auth) {}
 
     /**
      * @param  array<string, mixed>  $parameters
@@ -125,7 +119,7 @@ class SamlAuth
 
         \session()->forget('saml.logoutRequestId');
 
-        if ($redirectUrl !== '') {
+        if ($redirectUrl !== null && $redirectUrl !== '') {
             return new RedirectResponse($redirectUrl);
         }
 

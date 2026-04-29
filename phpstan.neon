@@ -9,3 +9,6 @@ parameters:
 
     excludePaths:
         - src/compat.php
+
+    stubFiles:
+        - phpstan/stubs/onelogin-auth.stub

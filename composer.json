@@ -2,22 +2,37 @@
   "name": "jdlien/laravel-saml",
   "description": "SAML toolkit for Laravel based on OneLogin's SAML PHP Toolkit.",
   "license": "MIT",
+  "type": "library",
+  "keywords": [
+    "laravel",
+    "saml",
+    "saml2",
+    "sso",
+    "authentication",
+    "onelogin"
+  ],
+  "homepage": "https://github.com/jdlien/laravel-saml",
+  "support": {
+    "issues": "https://github.com/jdlien/laravel-saml/issues",
+    "source": "https://github.com/jdlien/laravel-saml"
+  },
   "authors": [
     {
       "name": "JD Lien",
       "email": "jd@jdlien.com"
-    },
-    {
-      "name": "overtrue",
-      "email": "anzhengchao@gmail.com",
-      "role": "Original author"
     }
   ],
   "require": {
     "php": "^8.3",
+    "ext-dom": "*",
+    "ext-libxml": "*",
+    "ext-openssl": "*",
+    "ext-zlib": "*",
     "laravel/framework": "^12.0|^13.0",
-    "onelogin/php-saml": "^4.3.1",
-    "ext-openssl": "*"
+    "onelogin/php-saml": "^4.3.1"
+  },
+  "conflict": {
+    "overtrue/laravel-saml": "*"
   },
   "require-dev": {
     "pestphp/pest": "^4.4.1",
@@ -44,7 +59,7 @@
   "extra": {
     "laravel": {
       "providers": [
-        "\\Jdlien\\LaravelSaml\\SamlServiceProvider"
+        "Jdlien\\LaravelSaml\\SamlServiceProvider"
       ]
     }
   },

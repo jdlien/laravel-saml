@@ -1,0 +1,18 @@
+<?php
+
+namespace OneLogin\Saml2;
+
+class Auth
+{
+    /**
+     * Override the upstream `@phpstan-return ($stay is true ? string : never)`
+     * annotation, which is incorrect: when `$stay = true` and the IdP sent a
+     * `SAMLResponse` (SP-initiated logout), processSLO falls through with no
+     * return statement and therefore returns null. See
+     * vendor/onelogin/php-saml/src/Saml2/Auth.php::processSLO().
+     *
+     * @param  callable|null  $cbDeleteSession
+     * @return string|null
+     */
+    public function processSLO(bool $keepLocalSession = false, ?string $requestId = null, bool $retrieveParametersFromServer = false, $cbDeleteSession = null, bool $stay = false) {}
+}

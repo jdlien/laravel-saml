@@ -2,13 +2,24 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\ServiceProvider;
 use Jdlien\LaravelSaml\Saml;
 use Jdlien\LaravelSaml\SamlServiceProvider;
 
-it('registers itself with Laravel and publishes the saml config', function () {
+it('registers itself with Laravel', function () {
     $providers = app()->getLoadedProviders();
 
     expect($providers)->toHaveKey(SamlServiceProvider::class);
+});
+
+it('registers a saml-config publish group that exposes the package config file', function () {
+    $paths = ServiceProvider::pathsToPublish(SamlServiceProvider::class, 'saml-config');
+
+    expect($paths)->toBeArray()->not->toBeEmpty();
+
+    $source = array_key_first($paths);
+    expect(realpath($source))->toBe(realpath(__DIR__.'/../../config'))
+        ->and(is_file($source.'/saml.php'))->toBeTrue();
 });
 
 it('merges the package default saml config under the saml key', function () {

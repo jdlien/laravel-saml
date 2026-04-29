@@ -104,6 +104,16 @@ describe('handleLogoutRequest', function () {
         expect($result)->toBeNull();
     });
 
+    it('returns null when processSLO returns null (SP-initiated LogoutResponse path)', function () {
+        $auth = Mockery::mock(Auth::class);
+        $auth->shouldReceive('processSLO')->once()->andReturnNull();
+        $auth->shouldReceive('getErrors')->andReturn([]);
+
+        $result = (new SamlAuth($auth))->handleLogoutRequest();
+
+        expect($result)->toBeNull();
+    });
+
     it('returns a RedirectResponse when IdP-initiated logout requires a redirect back', function () {
         $auth = Mockery::mock(Auth::class);
         $auth->shouldReceive('processSLO')->once()->andReturn('https://idp.example.com/slo-response?id=xyz');

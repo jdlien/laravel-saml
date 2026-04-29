@@ -55,7 +55,7 @@ Calling `Saml::idp($name)->redirect()` resolves through the closure and caches t
 
 For multi-IdP scenarios, swap any `Saml::method()` call below for `Saml::idp($name)->method()` to target a specific IdP.
 
-### Controller scaffold
+### Controller Scaffold
 
 ```bash
 php artisan make:controller SamlController
@@ -101,7 +101,24 @@ Route::get('saml/sls', [SamlController::class, 'sls'])->name('saml.sls');
 Route::get('saml/metadata', [SamlController::class, 'metadata'])->name('saml.metadata');
 ```
 
-### Redirect to the IdP login
+### Middleware Requirements
+
+- The SAML routes must run under session middleware (typically the `web` group). The package reads/writes `saml.authnRequestId` and `saml.logoutRequestId` on the session to correlate requests with responses.
+- The `POST /acs` route must be excluded from CSRF validation, because the IdP's POST will not include a Laravel CSRF token. In Laravel 11+/12+:
+
+  ```php
+  // bootstrap/app.php
+  ->withMiddleware(function (Middleware $middleware) {
+      $middleware->validateCsrfTokens(except: [
+          'saml/acs',
+      ]);
+  })
+  ```
+
+  In older apps, add the same path to `App\Http\Middleware\VerifyCsrfToken::$except`.
+- If you also expose a POST SLS endpoint for an IdP that uses HTTP-POST binding for SLO, exclude that route too.
+
+### Redirect to the IdP Login
 
 Initiates SSO.
 
@@ -129,7 +146,7 @@ public function acs(Request $request)
 }
 ```
 
-### Redirect to IdP logout
+### Redirect to IdP Logout
 
 ```php
 public function logout(Request $request)
@@ -157,7 +174,7 @@ public function sls(Request $request)
 }
 ```
 
-### Metadata endpoint
+### Metadata Endpoint
 
 Publishes the SP metadata XML so the IdP can register your service.
 
@@ -173,7 +190,7 @@ public function metadata(Request $request)
 
 ## Security
 
-### RelayState validation
+### RelayState Validation
 
 `SamlUser::getIntendedUrl()` is the safe accessor for the SAML RelayState — it validates the value against open-redirect attacks. It returns:
 
@@ -184,7 +201,7 @@ It returns `null` for cross-origin URLs, protocol-relative URLs (`//example.com/
 
 If you have a legitimate reason to inspect the unvalidated value (e.g. logging, custom validation), use `getRawRelayState()` — but treat its output as user-controlled input.
 
-### Underlying SAML implementation
+### Underlying SAML Implementation
 
 The actual SAML 2.0 protocol logic — signature validation, XML canonicalization, encrypted assertion handling, etc. — lives in [`onelogin/php-saml`](https://github.com/SAML-Toolkits/php-saml). This package's job is the Laravel binding; it intentionally doesn't reimplement protocol primitives.
 
@@ -196,7 +213,7 @@ This package is a successor to `overtrue/laravel-saml`. Migration is intentional
 
    ```diff
    -    "overtrue/laravel-saml": "^1.2",
-   +    "jdlien/laravel-saml": "^1.0",
+   +    "jdlien/laravel-saml": "^2.0",
    ```
 
    Then `composer update jdlien/laravel-saml`.
@@ -208,7 +225,7 @@ This package is a successor to `overtrue/laravel-saml`. Migration is intentional
    +    \Jdlien\LaravelSaml\SamlServiceProvider::class,
    ```
 
-3. **Existing imports keep working** — a compat shim aliases every `Overtrue\LaravelSaml\…` class name to its new home. You can update `use` statements at your leisure. The compat shim will be removed in v2.0.
+3. **Existing imports keep working** — a compat shim aliases every `Overtrue\LaravelSaml\…` class name to its new home. You can update `use` statements at your leisure. The compat shim will be removed in v3.0.
 
 4. **Facade calls (`Saml::redirect()`, etc.) need no changes.** The facade name is preserved.
 

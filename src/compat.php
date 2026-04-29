@@ -16,7 +16,7 @@ use Jdlien\LaravelSaml\Utils;
 // Loaded via composer.json autoload.files so existing `use Overtrue\LaravelSaml\…;`
 // statements resolve to the new namespace during the migration window.
 //
-// Planned for removal in v2.0. Update your imports to `Jdlien\LaravelSaml\…` at your leisure.
+// Planned for removal in v3.0. Update your imports to `Jdlien\LaravelSaml\…` at your leisure.
 
 $aliases = [
     Saml::class => 'Overtrue\\LaravelSaml\\Saml',
