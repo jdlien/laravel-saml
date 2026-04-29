@@ -1,56 +1,75 @@
-Laravel SAML
----
+# Laravel SAML
 
-SAML toolkit for Laravel based on [OneLogin's SAML PHP Toolkit](https://github.com/onelogin/php-saml).
+[![Packagist Version](https://img.shields.io/packagist/v/jdlien/laravel-saml.svg)](https://packagist.org/packages/jdlien/laravel-saml)
+[![Total Downloads](https://img.shields.io/packagist/dt/jdlien/laravel-saml.svg)](https://packagist.org/packages/jdlien/laravel-saml)
+[![License](https://img.shields.io/packagist/l/jdlien/laravel-saml.svg)](https://packagist.org/packages/jdlien/laravel-saml)
 
-[![Sponsor me](https://github.com/overtrue/overtrue/blob/master/sponsor-me-button-s.svg?raw=true)](https://github.com/sponsors/overtrue)
+A SAML 2.0 toolkit for Laravel, built as a thin binding around [SAML-Toolkits/php-saml](https://github.com/SAML-Toolkits/php-saml) (published on packagist as `onelogin/php-saml`).
+
+> Originally based on [`overtrue/laravel-saml`](https://github.com/overtrue/laravel-saml) by [@overtrue](https://github.com/overtrue). Now maintained as an independent package by [@jdlien](https://github.com/jdlien) — modernized for Laravel 12/13 and PHP 8.3+, with bug fixes, security hardening, and full Pest 4 test coverage.
+
+## Requirements
+
+- PHP `^8.3`
+- Laravel `^12.0` or `^13.0`
+- `ext-openssl`
 
 ## Installation
 
 ```bash
-composer require overtrue/laravel-saml
+composer require jdlien/laravel-saml
 ```
 
-## Configuration
+The service provider is auto-discovered. Publish the config:
 
 ```bash
 php artisan vendor:publish --tag=saml-config
 ```
 
-This command will add the file `config/saml.php`. This config is handled almost directly by [OneLogin](https://github.com/onelogin/php-saml) so you may get further references there, but will cover here what's really necessary. There are some other config about routes you may want to check, they are pretty straightforward.
+This creates `config/saml.php`. The shape mirrors the [OneLogin PHP toolkit settings](https://github.com/SAML-Toolkits/php-saml#settings); see that project's docs for advanced options.
 
-## Usage
+## Configuration
 
-If your application is only used to log in to one specified IdP, you just need to configure `idp` section in `config/saml.php`.
+### Single IdP
 
-### idp configuration resolver
+If your application authenticates against a single IdP, fill in the `idp` section of `config/saml.php` (or supply the corresponding `SAML_IDP_*` env vars). The package auto-registers the resolver on boot.
 
-In order to support multiple IdP, you need to configure the following method to get the configuration of the IdP.
+### Multiple IdPs
+
+For multi-IdP scenarios, leave `idp` unset in `config/saml.php` and register a resolver from a service provider:
 
 ```php
-Saml::configureIdpUsing(function($idpName): array {
-    return [...]; 
+use Jdlien\LaravelSaml\Saml;
+
+Saml::configureIdpUsing(function (string $idpName): array {
+    // Look up the idp config from your DB, tenant store, etc.
+    return [
+        'entityId' => '...',
+        'singleSignOnService' => ['url' => '...'],
+        // ... see config/saml.php for the full shape
+    ];
 });
 ```
 
-You need to return the configuration array for IdP, see the `idp` section in `config/saml.php` for the structure.
+Calling `Saml::idp($name)->redirect()` will resolve through the closure and cache the resulting `SamlAuth` instance. Calling `Saml::configureIdpUsing()` again automatically flushes the cache so the new closure takes effect immediately.
 
-### Entrypoints controller
+## Usage
 
-You can create a controller to perform SAML integration:
+### Controller scaffold
 
-```php
-$ php artisan make:controller SamlController
+```bash
+php artisan make:controller SamlController
 ```
-
-Then we prepare the following 5 necessary methods.
 
 ```php
 <?php
 
 namespace App\Http\Controllers;
 
-use Overtrue\LaravelSaml\Saml;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Jdlien\LaravelSaml\Saml;
+use App\Models\User;
 
 class SamlController extends Controller
 {
@@ -62,157 +81,165 @@ class SamlController extends Controller
 }
 ```
 
-### Entrypoints Routes
+### Routes
 
-Then configure the routes at `routes/web.php`:
-
-| Method | URI                      | Name 				|
-| -------|--------------------------|------------------ |
-| GET    | `{routesPrefix}/login`     | saml.login 		|
-| POST   | `{routesPrefix}/acs`       | saml.acs 			|
-| GET    | `{routesPrefix}/logout`    | saml.logout 		|
-| GET    | `{routesPrefix}/sls`       | saml.sls 			|
-| GET    | `{routesPrefix}/metadata`  | saml.metadata 	|
-
-You are free to use your preferred routing prefix, for example, we use `saml` as the routing prefix:
+| Method | URI                       | Name            |
+| ------ | ------------------------- | --------------- |
+| GET    | `{routesPrefix}/login`    | `saml.login`    |
+| POST   | `{routesPrefix}/acs`      | `saml.acs`      |
+| GET    | `{routesPrefix}/logout`   | `saml.logout`   |
+| GET    | `{routesPrefix}/sls`      | `saml.sls`      |
+| GET    | `{routesPrefix}/metadata` | `saml.metadata` |
 
 ```php
 use App\Http\Controllers\SamlController;
 
 Route::get('saml/login', [SamlController::class, 'login'])->name('saml.login');
-Route::get('saml/logout', [SamlController::class, 'logout'])->name('saml.logout');
 Route::post('saml/acs', [SamlController::class, 'acs'])->name('saml.acs');
+Route::get('saml/logout', [SamlController::class, 'logout'])->name('saml.logout');
 Route::get('saml/sls', [SamlController::class, 'sls'])->name('saml.sls');
 Route::get('saml/metadata', [SamlController::class, 'metadata'])->name('saml.metadata');
 ```
 
-#### Redirect to IdP login service
+### Redirect to the IdP login
 
-Initiates the SSO process, creates an AuthnRequest, returns a laravel redirect response.
-
-```php
-    //<...>
-    public function login(Request $request)
-    {
-        // Use the default idp in the configuration
-        return Saml::redirect(); 
-        
-        // Or specify the idp name
-        return Saml::idp($request->get('idp'))->redirect();
-    }
-```
-
-#### Assertion Consumer Service (ACS)
-
-This method is used to handle the IdP authorization callback, `SamlAuth::getAuthenticatedUser` will validation the request and return a `Overtrue\LaravelSaml\SamlUser` object.
+Initiates SSO. Returns a Laravel `RedirectResponse`.
 
 ```php
-//<...>
-    public function acs(Request $request)
-    {
-        // Overtrue\LaravelSaml\SamlUser
-        $samlUser = Saml::getAuthenticatedUser();
-        // Or specify the idp name
-        //$samlUser = Saml::idp($request->get('idp'))->getAuthenticatedUser(); 
-        
-        $samlUserId = $samlUser->getNameId();
-        
-        // SamlUser to app User
-        // $user = User::FirstOrCreate(['email' => $samlUser->getNameId()]);
-        Auth::set($user);
-        
-        return redirect('/home')
-    }
+public function login(Request $request)
+{
+    // Default IdP from config
+    return Saml::redirect();
+
+    // Or pick a named IdP at runtime
+    return Saml::idp($request->get('idp'))->redirect();
+}
 ```
 
-#### Redirect to IdP logout service
+### Assertion Consumer Service (ACS)
 
-Create a redirect response to IdP logout service.
+Handles the IdP's authentication response. Returns a `SamlUser` (which wraps the OneLogin `Auth` object plus convenience accessors).
 
 ```php
-    //<...>
-    public function logout(Request $request)
-    {
-        // Use the default IdP in the configuration
-        return Saml::redirectToLogout(); 
-        
-        // Or specify the IdP name
-        return Saml::idp($request->get('idp'))->redirectToLogout();
-    }
+public function acs(Request $request)
+{
+    $samlUser = Saml::getAuthenticatedUser();
+    // Or: $samlUser = Saml::idp($request->get('idp'))->getAuthenticatedUser();
+
+    $user = User::firstOrCreate(['email' => $samlUser->getUserId()]);
+    Auth::login($user);
+
+    // getIntendedUrl() validates the SAML RelayState and only returns
+    // safe targets. See "Security" below.
+    return redirect($samlUser->getIntendedUrl() ?? '/home');
+}
 ```
 
-The IdP will return the Logout Response through the user's client to the Single Logout Service of the SP (route `saml/sls`).
-
-#### Single Logout Service (SLS)
-
-This code handles the Logout Request and the Logout Responses.
+### Redirect to IdP logout
 
 ```php
-    //<...>
-    public function sls(Request $request)
-    {
-        $auth = Saml::handleLogoutRequest();
-        // Or specify the IdP name
-        //$auth = Saml::idp($request->get('idp'))->handleLogoutRequest();
-    
-        Auth::logout();
-        
-        return redirect('/home')
-    }
+public function logout(Request $request)
+{
+    return Saml::redirectToLogout();
+    // Or: return Saml::idp($request->get('idp'))->redirectToLogout();
+}
 ```
 
-#### Metadata
+The IdP returns a Logout Response through the user's browser to your `/sls` endpoint.
 
-This code will provide the XML metadata file of our SP, based on the info that we provided in the settings files.
+### Single Logout Service (SLS)
+
+Handles both Logout Responses (SP-initiated logout) and Logout Requests (IdP-initiated logout).
 
 ```php
-    //<...>
-    public function metadata(Request $request)
-    {
-        if ($request->has('download')) {
-            return Saml::getMetadataXMLAsStreamResponse();
-            // or specify a filename to the xml file:
-            // return Saml::getMetadataXMLAsStreamResponse('sp-metadata.xml');
-        }
-        
-        return Saml::getMetadataXML();
-    }
+public function sls(Request $request)
+{
+    $redirect = Saml::handleLogoutRequest();
+    // Or: $redirect = Saml::idp($request->get('idp'))->handleLogoutRequest();
+
+    Auth::logout();
+
+    // IdP-initiated logout: handleLogoutRequest() returns a RedirectResponse
+    // that sends a LogoutResponse back to the IdP. Honor it.
+    return $redirect ?? redirect('/');
+}
 ```
 
-### More
+### Metadata endpoint
 
-For more information on configuration and usage please see the source code or read [onelogin/php-saml](https://github.com/onelogin/php-saml).
+Publishes the SP metadata XML so the IdP can register your service.
 
+```php
+public function metadata(Request $request)
+{
+    return Saml::getMetadataXML();
 
-## :heart: Sponsor me 
+    // Or as a streamed download:
+    // return Saml::getMetadataXMLAsStreamResponse('my-app-saml-metadata.xml');
+}
+```
 
-[![Sponsor me](https://github.com/overtrue/overtrue/blob/master/sponsor-me.svg?raw=true)](https://github.com/sponsors/overtrue)
+## Security
 
-如果你喜欢我的项目并想支持它，[点击这里 :heart:](https://github.com/sponsors/overtrue)
+### RelayState validation
 
+`SamlUser::getIntendedUrl()` is the safe accessor for the SAML RelayState — it validates the value against open-redirect attacks. It returns:
 
-## Project supported by JetBrains
+- relative paths (e.g. `/dashboard`) as-is
+- absolute URLs only when the host matches the application host
 
-Many thanks to Jetbrains for kindly providing a license for me to work on this and other open-source projects.
+It returns `null` for cross-origin URLs, protocol-relative URLs (`//example.com/...`), `javascript:` / `data:` / other non-HTTP schemes, and anything malformed. **Always prefer `getIntendedUrl()` over the raw RelayState** when redirecting users after login.
 
-[![](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)](https://www.jetbrains.com/?from=https://github.com/overtrue)
+If you have a legitimate reason to inspect the unvalidated value (e.g. logging, custom validation), use `getRawRelayState()` — but treat its output as user-controlled input.
 
-## Contributing
+### Underlying SAML implementation
 
-You can contribute in one of three ways:
+The actual SAML 2.0 protocol logic — signature validation, XML canonicalization, encrypted assertion handling, etc. — lives in [`onelogin/php-saml`](https://github.com/SAML-Toolkits/php-saml). This package's job is the Laravel binding; it intentionally doesn't reimplement protocol primitives. We require `^4.3.1` to ensure consumers pick up the [CVE-2025-66475](https://github.com/SAML-Toolkits/php-saml/security/advisories) fix.
 
-1. File bug reports using the [issue tracker](https://github.com/overtrue/laravel-package/issues).
-2. Answer questions or fix bugs on the [issue tracker](https://github.com/overtrue/laravel-package/issues).
-3. Contribute new features or update the wiki.
+## Migrating from `overtrue/laravel-saml`
 
-_The code contribution process is not very formal. You just need to make sure that you follow the PSR-0, PSR-1, and PSR-2 coding guidelines. Any new code contributions must be accompanied by unit tests where applicable._
+This package is a maintained successor to `overtrue/laravel-saml`. Migration is intentionally cheap:
 
-## PHP 扩展包开发
+1. **Update `composer.json`:**
 
-> 想知道如何从零开始构建 PHP 扩展包？
->
-> 请关注我的实战课程，我会在此课程中分享一些扩展开发经验 —— [《PHP 扩展包实战教程 - 从入门到发布》](https://learnku.com/courses/creating-package)
+   ```diff
+   -    "overtrue/laravel-saml": "^1.2",
+   +    "jdlien/laravel-saml": "^1.0",
+   ```
+
+   Then `composer update jdlien/laravel-saml`.
+
+2. **Update the service provider reference** if you registered it manually (auto-discovered installs need no change). In `bootstrap/providers.php` (Laravel 11+) or `config/app.php`:
+
+   ```diff
+   -    \Overtrue\LaravelSaml\SamlServiceProvider::class,
+   +    \Jdlien\LaravelSaml\SamlServiceProvider::class,
+   ```
+
+3. **Existing imports keep working** — a compat shim aliases every `Overtrue\LaravelSaml\…` class name to its new home. You can update `use` statements at your leisure. The compat shim will be removed in v2.0.
+
+4. **Facade calls (`Saml::redirect()`, etc.) need no changes.** The facade name is preserved.
+
+If you depended on any of these previously-buggy behaviors, note the v1.0 fixes:
+
+- `Saml::idp($name, $settings)` now respects the explicit `$settings` argument and skips the resolver. (Was: an operator-precedence bug invoked the resolver anyway.)
+- `SamlAuth::handleLogoutRequest()` now returns `?RedirectResponse`. IdP-initiated logout requires the SP to redirect back to the IdP with a LogoutResponse — the previous version captured but discarded that URL.
+- `SamlUser::parseAttributes($attributes)` now uses the values supplied in `$attributes` instead of re-fetching each via `getAttribute()`.
+- `SamlUser::getIntendedUrl()` now validates RelayState origin and rejects open-redirect surfaces.
+
+## Testing
+
+```bash
+composer install
+composer test            # Pest test suite
+composer test:coverage   # Coverage with the 95% minimum enforced
+composer analyse         # Larastan static analysis
+composer check-style     # Pint dry run
+composer fix-style       # Pint auto-fix
+```
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
+
+Original copyright © 2020 overtrue. Modifications and ongoing maintenance © 2026 JD Lien.
