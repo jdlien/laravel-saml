@@ -89,9 +89,13 @@ class SamlAuth
     /**
      * Process the SAML Logout Response / Logout Request sent by the IdP.
      *
+     * Returns a RedirectResponse only when the IdP initiated logout (the SP
+     * must redirect back to the IdP with a LogoutResponse). Returns null when
+     * the SP initiated logout and processing is complete.
+     *
      * @throws \Jdlien\LaravelSaml\Exceptions\AssertException
      */
-    public function handleLogoutRequest(?callable $callback = null, bool $retrieveParametersFromServer = false)
+    public function handleLogoutRequest(?callable $callback = null, bool $retrieveParametersFromServer = false): ?RedirectResponse
     {
         $callback ??= fn () => null;
 
@@ -114,6 +118,10 @@ class SamlAuth
         }
 
         \session()->forget('saml.logoutRequestId');
+
+        if (is_string($redirectUrl) && $redirectUrl !== '') {
+            return new RedirectResponse($redirectUrl);
+        }
 
         return null;
     }

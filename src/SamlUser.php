@@ -3,9 +3,7 @@
 namespace Jdlien\LaravelSaml;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Fluent;
-use JetBrains\PhpStorm\Pure;
 use OneLogin\Saml2\Auth;
 
 /**
@@ -26,21 +24,61 @@ class SamlUser extends Fluent
         $this->parseAttributes($this->auth->getAttributes());
     }
 
-    #[Pure]
     public function getUserId(): string
     {
         return $this->auth->getNameId();
     }
 
-    public function getIntendedUrl()
+    /**
+     * Returns a safe redirect target derived from the SAML RelayState.
+     *
+     * RelayState is attacker-controllable. To prevent open redirects, this
+     * method only returns:
+     *   - relative paths (e.g. "/dashboard")
+     *   - absolute URLs whose host matches the application host
+     *
+     * Cross-origin or malformed values return null. Use getRawRelayState()
+     * if you need the unvalidated value.
+     */
+    public function getIntendedUrl(): ?string
     {
-        $relayState = $this->request->input('RelayState');
+        $relayState = $this->getRawRelayState();
 
-        if ($relayState && URL::full() != $relayState) {
+        if ($relayState === null || $relayState === '') {
+            return null;
+        }
+
+        // Reject self-redirect loops (the IdP may pass back our own ACS URL).
+        if ($relayState === \url()->full()) {
+            return null;
+        }
+
+        // Relative paths are safe — they can only resolve within the app.
+        if (! preg_match('#^[a-z][a-z0-9+.-]*://#i', $relayState)) {
             return $relayState;
         }
 
-        return null;
+        // Absolute URLs: only allow same-host.
+        $host = parse_url($relayState, PHP_URL_HOST);
+        if (! is_string($host) || $host === '') {
+            return null;
+        }
+
+        return strcasecmp($host, $this->request->getHost()) === 0
+            ? $relayState
+            : null;
+    }
+
+    /**
+     * The raw, unvalidated RelayState value from the request.
+     *
+     * Prefer getIntendedUrl() unless you have an explicit reason to use this.
+     */
+    public function getRawRelayState(): ?string
+    {
+        $value = $this->request->input('RelayState');
+
+        return is_string($value) ? $value : null;
     }
 
     public function getSamlAttribute(string $attribute): ?array
@@ -51,13 +89,12 @@ class SamlUser extends Fluent
     public function parseAttributes($attributes = []): static
     {
         foreach ($attributes as $propertyName => $samlAttribute) {
-            $this->$propertyName = $this->auth->getAttribute($propertyName);
+            $this->$propertyName = $samlAttribute;
         }
 
         return $this;
     }
 
-    #[Pure]
     public function getSessionIndex(): ?string
     {
         return $this->auth->getSessionIndex();

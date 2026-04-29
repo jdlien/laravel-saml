@@ -78,7 +78,7 @@ return [
     // Identity Provider Data that we want connected with our SP.
     // 'idp' => [
     //     // Identifier of the IdP entity  (must be a URI)
-    //     'entityId' => env('SAML_IDP_PRIVATEKEY'),
+    //     'entityId' => env('SAML_IDP_ENTITYID'),
     //     // SSO endpoint info of the IdP. (Authentication Request protocol)
     //     'singleSignOnService' => [
     //         // URL Target of the IdP where the Authentication Request Message
