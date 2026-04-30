@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Jdlien\LaravelSaml\Exceptions\InvalidConfigException;
 use Jdlien\LaravelSaml\Utils;
 
+covers(Utils::class);
+
 $fixtureDir = dirname(__DIR__).'/fixtures';
 
 it('loads a private key from a PEM file and returns the base64 body', function () use ($fixtureDir) {

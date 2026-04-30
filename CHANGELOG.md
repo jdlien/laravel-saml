@@ -4,6 +4,16 @@ All notable changes to `jdlien/laravel-saml` are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-04-29
+
+### Added
+
+- `Saml::normalizeConfig()` now resolves relative cert/key paths against Laravel's `base_path()` when the value isn't found at the literal path. Lets consumers write `'x509cert' => env('SAML_SP_X509', 'storage/certs/saml.crt')` directly without per-app helper functions. Falls back gracefully when `base_path()` isn't available (non-Laravel contexts).
+
+### Changed
+
+- When a config value passes `looksLikePath()` (string, no newlines, ≤4096 chars) but no file is found at the literal path *or* relative to `base_path()`, `Saml::normalizeConfig()` now throws `InvalidConfigException` with a message naming the config key and explaining the lookup attempts. Previously the raw path string was passed through to OneLogin, producing an inscrutable downstream error. Strictly an improvement; consumers relying on the old silent-fail behavior were already broken.
+
 ## [2.0.0] — 2026-04-29
 
 First public release as `jdlien/laravel-saml`. Bumped to 2.0.0 (rather than reusing the inherited 1.x line) so Composer's SemVer resolver actually serves the new code: the upstream tags `1.0.0`–`1.2.0` are preserved on the repo as historical lineage from `overtrue/laravel-saml` but represent the pre-fork codebase.

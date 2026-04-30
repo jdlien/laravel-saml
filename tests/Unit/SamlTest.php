@@ -7,6 +7,8 @@ use Jdlien\LaravelSaml\Saml;
 use Jdlien\LaravelSaml\SamlAuth;
 use OneLogin\Saml2\Auth;
 
+covers(Saml::class);
+
 $fixtureDir = dirname(__DIR__).'/fixtures';
 
 /**
@@ -187,6 +189,47 @@ describe('normalizeConfig', function () use ($fixtureDir) {
 
         Saml::normalizeConfig($config);
     })->throws(InvalidConfigException::class, 'singleLogoutService.url');
+
+    it('resolves a relative cert path against base_path()', function () use ($fixtureDir) {
+        // Place a fixture under base_path() so we can reference it relatively.
+        $relative = 'saml-test-fixture.crt';
+        $absolute = base_path($relative);
+        copy($fixtureDir.'/test.crt', $absolute);
+
+        try {
+            $config = validSamlConfig($fixtureDir);
+            $config['sp']['x509cert'] = $relative;
+
+            $normalized = Saml::normalizeConfig($config);
+
+            expect($normalized['sp']['x509cert'])
+                ->not->toBe($relative)
+                ->and($normalized['sp']['x509cert'])->toBeString();
+        } finally {
+            @unlink($absolute);
+        }
+    });
+
+    it('throws InvalidConfigException when sp.privateKey path resolves nowhere', function () use ($fixtureDir) {
+        $config = validSamlConfig($fixtureDir);
+        $config['sp']['privateKey'] = 'storage/certs/missing.key';
+
+        Saml::normalizeConfig($config);
+    })->throws(InvalidConfigException::class, 'sp.privateKey');
+
+    it('throws InvalidConfigException when sp.x509cert path resolves nowhere', function () use ($fixtureDir) {
+        $config = validSamlConfig($fixtureDir);
+        $config['sp']['x509cert'] = 'storage/certs/missing.crt';
+
+        Saml::normalizeConfig($config);
+    })->throws(InvalidConfigException::class, 'sp.x509cert');
+
+    it('throws InvalidConfigException when idp.x509cert path resolves nowhere', function () use ($fixtureDir) {
+        $config = validSamlConfig($fixtureDir);
+        $config['idp']['x509cert'] = 'storage/certs/missing-idp.crt';
+
+        Saml::normalizeConfig($config);
+    })->throws(InvalidConfigException::class, 'idp.x509cert');
 });
 
 describe('flushResolvedIdps', function () use ($fixtureDir) {

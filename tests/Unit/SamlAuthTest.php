@@ -10,6 +10,8 @@ use Jdlien\LaravelSaml\SamlAuth;
 use Jdlien\LaravelSaml\SamlUser;
 use OneLogin\Saml2\Auth;
 
+covers(SamlAuth::class);
+
 describe('redirect', function () {
     it('asks OneLogin for the login URL and returns a Redirect to it', function () {
         $auth = Mockery::mock(Auth::class);

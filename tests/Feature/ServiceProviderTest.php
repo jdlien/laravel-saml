@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Jdlien\LaravelSaml\Saml;
 use Jdlien\LaravelSaml\SamlServiceProvider;
 
+covers(SamlServiceProvider::class);
+
 it('registers itself with Laravel', function () {
     $providers = app()->getLoadedProviders();
 

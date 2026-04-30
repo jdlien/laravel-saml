@@ -153,16 +153,22 @@ class Saml
             throw new InvalidConfigException('Please configure the "saml.sp.singleLogoutService.url".');
         }
 
-        if (self::looksLikePath($config['sp']['privateKey'] ?? null) && file_exists($config['sp']['privateKey'])) {
-            $config['sp']['privateKey'] = Utils::loadKeyFromFile($config['sp']['privateKey']);
+        if (self::looksLikePath($config['sp']['privateKey'] ?? null)) {
+            $config['sp']['privateKey'] = Utils::loadKeyFromFile(
+                self::resolveCertPath($config['sp']['privateKey'], 'sp.privateKey')
+            );
         }
 
-        if (self::looksLikePath($config['sp']['x509cert'] ?? null) && file_exists($config['sp']['x509cert'])) {
-            $config['sp']['x509cert'] = Utils::loadCertFromFile($config['sp']['x509cert']);
+        if (self::looksLikePath($config['sp']['x509cert'] ?? null)) {
+            $config['sp']['x509cert'] = Utils::loadCertFromFile(
+                self::resolveCertPath($config['sp']['x509cert'], 'sp.x509cert')
+            );
         }
 
-        if (self::looksLikePath($config['idp']['x509cert'] ?? null) && file_exists($config['idp']['x509cert'])) {
-            $config['idp']['x509cert'] = Utils::loadCertFromFile($config['idp']['x509cert']);
+        if (self::looksLikePath($config['idp']['x509cert'] ?? null)) {
+            $config['idp']['x509cert'] = Utils::loadCertFromFile(
+                self::resolveCertPath($config['idp']['x509cert'], 'idp.x509cert')
+            );
         }
 
         return $config;
@@ -180,5 +186,37 @@ class Saml
             && $value !== ''
             && strlen($value) <= 4096
             && ! str_contains($value, "\n");
+    }
+
+    /**
+     * Resolve a path-like cert/key value to an absolute, existing path.
+     *
+     * Tries the value as-is, then falls back to base_path()-resolution so
+     * env-driven configs can use natural Laravel-relative paths like
+     * 'storage/certs/saml.crt'. Throws if neither location is readable.
+     *
+     * @throws InvalidConfigException
+     */
+    private static function resolveCertPath(string $value, string $description): string
+    {
+        if (file_exists($value)) {
+            return $value;
+        }
+
+        if (function_exists('base_path')) {
+            $absolute = base_path($value);
+            if (file_exists($absolute)) {
+                return $absolute;
+            }
+        }
+
+        throw new InvalidConfigException(sprintf(
+            "The %s value '%s' looks like a filesystem path but no file was found "
+                .'(checked as-is and relative to base_path() if available). '
+                .'Either provide an absolute path, a path relative to the project root, '
+                .'or inline the PEM content directly.',
+            $description,
+            $value
+        ));
     }
 }

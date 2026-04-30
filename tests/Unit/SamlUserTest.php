@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Jdlien\LaravelSaml\SamlUser;
 use OneLogin\Saml2\Auth;
 
+covers(SamlUser::class);
+
 function makeAuthMock(array $attributes = []): Auth
 {
     $auth = Mockery::mock(Auth::class);

@@ -16,7 +16,7 @@ PHP 8.3+ is required. The repo is Laravel-Herd-friendly on macOS — `php` and `
 
 ```bash
 composer test             # Pest suite
-composer test:coverage    # with --min=95 enforced
+composer test:coverage    # with --min=100 enforced
 composer analyse          # Larastan / PHPStan
 composer check-style      # Pint dry-run
 composer fix-style        # Pint auto-fix
@@ -31,7 +31,7 @@ herd coverage vendor/bin/pest --coverage
 ## Pull Requests
 
 - Match the existing code style — `composer fix-style` will handle most of it.
-- Keep coverage at or above 95%. Add tests for any new behavior.
+- Keep coverage at 100%. Add tests for any new behavior. For genuinely unreachable defense-in-depth branches, use `@codeCoverageIgnoreStart`/`@codeCoverageIgnoreEnd` with a comment explaining *why* the branch is unreachable (see `src/Saml.php` and `src/Utils.php` for precedent).
 - For bug fixes, include a regression test that fails without your fix.
 - Don't add net-new features that fall outside "Laravel binding around onelogin/php-saml" — protocol additions belong upstream.
 - Keep PRs focused. Refactors and feature work should be separate from bug fixes.

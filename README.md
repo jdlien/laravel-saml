@@ -52,6 +52,16 @@ Saml::configureIdpUsing(function (string $idpName): array {
 
 Calling `Saml::idp($name)->redirect()` resolves through the closure and caches the resulting `SamlAuth` instance.
 
+### Cert and key values
+
+`x509cert` and `privateKey` accept either inline PEM strings or filesystem paths. Paths can be:
+
+- **Absolute** — `/etc/ssl/certs/saml.crt`
+- **Relative to project root** — `storage/certs/saml.crt` (resolved against Laravel's `base_path()`, so it works under php-fpm, queue workers, and scheduled tasks regardless of the current working directory)
+- **Relative to PHP's CWD** — works for `php artisan` but not recommended; prefer the project-root form
+
+If a value looks like a path (string, no newlines, ≤4096 chars) but no file is found at either location, `Saml::normalizeConfig()` throws `InvalidConfigException` naming the offending config key.
+
 ## Usage
 
 For multi-IdP scenarios, swap any `Saml::method()` call below for `Saml::idp($name)->method()` to target a specific IdP.
